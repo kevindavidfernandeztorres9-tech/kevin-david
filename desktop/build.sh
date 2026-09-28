@@ -12,5 +12,7 @@ mkdir -p build/META-INF && cp lib/FLATLAF-LICENSE.txt build/META-INF/LICENSE-Fla
 printf 'Main-Class: airmagg.dwell.Main\nImplementation-Title: Dwell airmaggnature\n' > build/manifest.txt
 jar --create --file dist/DwellAirmagg/DwellAirmagg.jar --manifest build/manifest.txt -C build airmagg -C build com -C build META-INF
 cp Abrir_Dwell_Airmagg.bat LEEME.txt dist/DwellAirmagg/
+# Tambien el menu que abre el panel web (no necesita Java)
+cp ../Abrir_Dwell_en_Tiempo_Real.bat dist/DwellAirmagg/Abrir_Panel_Web.bat
 (cd dist && rm -f DwellAirmagg.zip && zip -qr DwellAirmagg.zip DwellAirmagg)
 ls -la dist dist/DwellAirmagg

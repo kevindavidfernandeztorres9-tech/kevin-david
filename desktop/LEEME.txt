@@ -7,5 +7,7 @@ DWELL AIRMAGGNATURE - APP DE ESCRITORIO
 3. Necesita Java 17 o mas nuevo. Si no lo tienes, el .bat abre la pagina para instalarlo.
    Tambien usa el Java de ControlNegocio si esta carpeta esta al lado de ControlNegocio.
 
+Abrir_Panel_Web.bat = menu que abre el panel en el navegador (no necesita Java).
+
 Si cambias la contrasena del panel: boton "Configurar" (abajo).
 Tus preferencias se guardan en %APPDATA%\DwellAirmagg\config.properties
