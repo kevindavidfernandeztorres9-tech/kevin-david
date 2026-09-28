@@ -140,7 +140,11 @@
       k: kindOf(el, isBuy),
       d: destinationOf(el)
     });
+    // Enviar pronto para que el clic se vea "en vivo" en el panel
+    clearTimeout(clickTimer);
+    clickTimer = setTimeout(function () { send(false); }, 1500);
   }
+  var clickTimer = null;
 
   function recordMove(e) {
     var now = Date.now();

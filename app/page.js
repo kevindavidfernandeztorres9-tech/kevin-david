@@ -11,6 +11,8 @@ const RANGES = [
   ['30d', 'Últimos 30 días'],
 ];
 const VIEWS = [
+  { group: 'Seguimiento' },
+  { id: 'mis', icon: '★', label: 'Mis landings' },
   { group: 'En vivo' },
   { id: 'vivo', icon: '∿', label: 'Todo en vivo' },
   { id: 'visitantes', icon: '◉', label: 'Visitantes ahora' },
@@ -256,7 +258,7 @@ function ViewCaen({ depth, title }) {
   );
 }
 
-function HeatCanvas({ heat, show }) {
+function HeatCanvas({ heat, show, className }) {
   const ref = useRef(null);
   useEffect(() => {
     const canvas = ref.current;
@@ -318,8 +320,31 @@ function HeatCanvas({ heat, show }) {
         ctx.stroke();
       }
     }
+    // Capa "ahora": lo que hacen las visitas activas en este momento
+    if (show.live && heat.live) {
+      ctx.fillStyle = 'rgba(57,135,229,0.55)';
+      for (const [x, y] of heat.live.moves) {
+        ctx.beginPath();
+        ctx.arc((x / 1000) * w, (y / 1000) * h, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      for (const [x, y] of heat.live.clicks) {
+        const px = (x / 1000) * w;
+        const py = (y / 1000) * h;
+        ctx.beginPath();
+        ctx.arc(px, py, 6, 0, Math.PI * 2);
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = surface;
+        ctx.stroke();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#3987e5';
+        ctx.stroke();
+      }
+    }
   }, [heat, show]);
-  return <canvas ref={ref} className="heat-canvas" role="img" aria-label="Mapa de calor de la página, de arriba abajo" />;
+  return (
+    <canvas ref={ref} className={className || 'heat-canvas'} role="img" aria-label="Mapa de calor de la página, de arriba abajo" />
+  );
 }
 
 function DeviceFilter({ device, setDevice }) {
@@ -584,10 +609,294 @@ function Setup({ origin }) {
   );
 }
 
+const RANGE_PREV = { '1h': 'la hora anterior', '24h': 'las 24 h anteriores', '7d': 'los 7 días anteriores', '30d': 'los 30 días anteriores' };
+
+function Delta({ cur, prev, lowerIsBetter, unit }) {
+  if (!prev && !cur) return <span className="delta">—</span>;
+  if (!prev) return <span className="delta">nuevo</span>;
+  const diff = cur - prev;
+  if (Math.abs(diff) < 0.05) return <span className="delta">= igual</span>;
+  const better = lowerIsBetter ? diff < 0 : diff > 0;
+  const txt = unit === 'pp' ? `${diff > 0 ? '+' : ''}${fmtPct(diff).replace('%', '')} pts` : `${diff > 0 ? '+' : ''}${Math.round((diff / prev) * 100)}%`;
+  return (
+    <span className={`delta ${better ? 'up' : 'down'}`}>
+      {diff > 0 ? '▲' : '▼'} {txt}
+    </span>
+  );
+}
+
+function MiniDays({ daily }) {
+  const max = Math.max(...daily.map((d) => d.views), 1);
+  return (
+    <div className="mini-days" role="img" aria-label="Visitas por día, últimos 14 días">
+      {daily.map((d) => (
+        <div key={d.day} className="mini-col" title={`${d.day}: ${d.views} visitas · dwell ${fmtTime(d.medianDwellMs)} · carrito ${fmtPct(d.cartRate)}`}>
+          <span style={{ height: `${d.views ? Math.max((d.views / max) * 100, 4) : 0}%` }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const LIVE_SHOW = { moves: true, clicks: true, live: true };
+
+function LandingLive({ t, range, st }) {
+  const [heat, setHeat] = useState(null);
+  const load = useCallback(async () => {
+    const q = new URLSearchParams({ range, host: t.host, path: t.path });
+    try {
+      const res = await fetch(`/api/heatmap?${q}`, { cache: 'no-store' });
+      if (res.ok) setHeat(await res.json());
+    } catch {}
+  }, [range, t.host, t.path]);
+  useEffect(() => {
+    load();
+    const id = setInterval(() => document.visibilityState === 'visible' && load(), REFRESH_MS);
+    return () => clearInterval(id);
+  }, [load]);
+
+  const order = { critical: 0, warning: 1, info: 2, good: 3 };
+  const issues = [...(st?.insights || []), ...(heat?.insights || [])]
+    .filter((i) => i.level === 'critical' || i.level === 'warning')
+    .sort((a, b) => order[a.level] - order[b.level]);
+  const overlayUrl = heat?.overlayToken ? `https://${t.host}${t.path}?dwell_overlay=${encodeURIComponent(heat.overlayToken)}` : '';
+
+  return (
+    <div className="track-live">
+      <div className="live-head">
+        <span className={`live-dot ${heat?.live?.visitors ? '' : 'off'}`} aria-hidden />
+        <strong>{heat ? `${fmtInt(heat.live.visitors)} ahora en la página` : 'Cargando…'}</strong>
+      </div>
+      {heat && <HeatCanvas heat={heat} show={LIVE_SHOW} className="heat-mini" />}
+      <div className="legend small">
+        <span><span className="sw heat" /> cursor</span>
+        <span><span className="sw ring" /> clic</span>
+        <span><span className="sw buy" /> compra</span>
+        <span><span className="sw live" /> ahora</span>
+      </div>
+      {heat && heat.destinations.length > 0 && (
+        <div className="top-clicks">
+          <span className="label">Donde más hacen clic</span>
+          {heat.destinations.slice(0, 3).map((d, i) => (
+            <div key={i} className="top-click">
+              <span className="path">{d.k === 'buy' ? '✓ ' : ''}{d.d}</span>
+              <span className="num">{fmtInt(d.count)} · {Math.round(d.avgY / 10)}% alto</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {issues[0] && (
+        <div className={`fix ${issues[0].level}`}>
+          <span className="label">Mejora para convertir más</span>
+          <strong>{issues[0].title}</strong>
+          <p>{issues[0].detail}</p>
+        </div>
+      )}
+      {overlayUrl && (
+        <a className="btn small" href={overlayUrl} target="_blank" rel="noreferrer">Ver sobre la página ↗</a>
+      )}
+    </div>
+  );
+}
+
+function ViewMis({ range, landings, onAnalyze }) {
+  const [track, setTrack] = useState(null);
+  const [url, setUrl] = useState('');
+  const [name, setName] = useState('');
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/landings?range=${range}`, { cache: 'no-store' });
+      if (res.status === 401) {
+        window.location.href = '/login';
+        return;
+      }
+      const json = await res.json();
+      if (res.ok) setTrack(json);
+      else setMsg(json.error || 'Error al cargar');
+    } catch (e) {
+      setMsg(e.message);
+    }
+  }, [range]);
+
+  useEffect(() => {
+    load();
+    const id = setInterval(() => document.visibilityState === 'visible' && load(), 30000);
+    return () => clearInterval(id);
+  }, [load]);
+
+  const add = async (u, n) => {
+    setBusy(true);
+    setMsg('');
+    try {
+      const res = await fetch('/api/landings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: u, name: n }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'No se pudo guardar');
+      setUrl('');
+      setName('');
+      setMsg(`✓ Guardada: ${json.path}`);
+      await load();
+    } catch (e) {
+      setMsg(`⚠ ${e.message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async (t) => {
+    if (!window.confirm(`¿Dejar de seguir ${t.name || t.path}? Las visitas ya guardadas no se borran.`)) return;
+    await fetch(`/api/landings?id=${t.id}`, { method: 'DELETE' });
+    load();
+  };
+
+  const statsFor = (path) =>
+    landings
+      .filter((l) => l.path === path || (path.startsWith('/products/') && l.path.endsWith(path)))
+      .sort((a, b) => b.views - a.views)[0];
+
+  return (
+    <>
+      <section className="card">
+        <h2>Mis landings</h2>
+        <p className="sub">
+          Las páginas que sigues. Cada una se compara con {RANGE_PREV[range]} y muestra sus visitas día por día. Se actualiza sola.
+        </p>
+        <form
+          className="add-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            add(url, name);
+          }}
+        >
+          <input
+            aria-label="Dirección de la landing"
+            placeholder="https://airmaggnature.myshopify.com/products/…"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            required
+          />
+          <input aria-label="Nombre (opcional)" placeholder="Nombre (opcional)" value={name} onChange={(e) => setName(e.target.value)} />
+          <button className="btn" disabled={busy}>{busy ? 'Guardando…' : '+ Guardar landing'}</button>
+        </form>
+        {msg && <p className="meta">{msg}</p>}
+      </section>
+
+      {!track ? (
+        <p className="empty">Cargando…</p>
+      ) : (
+        <>
+          {track.landings.length === 0 && <p className="empty">Aún no sigues ninguna landing. Pega su dirección arriba.</p>}
+          <div className="track-list">
+            {track.landings.map((t) => {
+              const c = t.current;
+              const p = t.previous;
+              const st = statsFor(t.path);
+              return (
+                <section key={t.id} className="card track">
+                  <div className="track-head">
+                    <div>
+                      <div className="track-name">{t.name || t.path}</div>
+                      <a className="host" href={t.url} target="_blank" rel="noreferrer">{t.url} ↗</a>
+                      <div className="host">
+                        Siguiendo desde {new Date(t.created_at).toLocaleDateString('es-PE')} ·{' '}
+                        {t.lastVisit ? `última visita ${new Date(t.lastVisit).toLocaleString('es-PE')}` : 'sin visitas todavía'}
+                      </div>
+                    </div>
+                    <div className="track-actions">
+                      <button className="btn" disabled={!st} onClick={() => st && onAnalyze(st.key)} title={st ? '' : 'Aún no tiene visitas en este rango'}>
+                        Analizar
+                      </button>
+                      <button className="btn ghost small" onClick={() => remove(t)}>Quitar</button>
+                    </div>
+                  </div>
+                  <div className="track-body">
+                    <div>
+                      <div className="track-metrics">
+                        <div>
+                          <span className="label">Visitas</span>
+                          <strong>{fmtInt(c.views)}</strong>
+                          <Delta cur={c.views} prev={p.views} />
+                        </div>
+                        <div>
+                          <span className="label">Dwell mediano</span>
+                          <strong>{fmtTime(c.medianDwellMs)}</strong>
+                          <Delta cur={c.medianDwellMs} prev={p.medianDwellMs} />
+                        </div>
+                        <div>
+                          <span className="label">Rebote</span>
+                          <strong>{fmtPct(c.bounceRate)}</strong>
+                          <Delta cur={c.bounceRate} prev={p.bounceRate} lowerIsBetter unit="pp" />
+                        </div>
+                        <div>
+                          <span className="label">Llegan a ver</span>
+                          <strong>{fmtPct(c.avgSeen)}</strong>
+                          <Delta cur={c.avgSeen} prev={p.avgSeen} unit="pp" />
+                        </div>
+                        <div>
+                          <span className="label">Agregan al carrito</span>
+                          <strong>{fmtPct(c.cartRate)}</strong>
+                          <Delta cur={c.cartRate} prev={p.cartRate} unit="pp" />
+                        </div>
+                        <div>
+                          <span className="label">Cuello de botella</span>
+                          <strong className="small-strong">
+                            {st?.bottleneck ? `⚠ ${st.bottleneck.label || st.bottleneck.id}` : '—'}
+                          </strong>
+                        </div>
+                      </div>
+                      <div className="track-days">
+                        <span className="label">Visitas por día (14 días)</span>
+                        <MiniDays daily={t.daily} />
+                        <div className="mini-axis">
+                          <span>{t.daily[0]?.day.slice(5)}</span>
+                          <span>hoy</span>
+                        </div>
+                      </div>
+                    </div>
+                    <LandingLive t={t} range={range} st={st} />
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+          {track.suggested.length > 0 && (
+            <section className="card">
+              <h2>Páginas con visitas que no sigues</h2>
+              <p className="sub">Si es una landing nueva, pulsa “Seguir” para agregarla.</p>
+              <table>
+                <tbody>
+                  {track.suggested.map((s) => (
+                    <tr key={s.host + s.path}>
+                      <td>
+                        <div className="path">{s.path}</div>
+                        <div className="host">{s.host}</div>
+                      </td>
+                      <td className="num">{fmtInt(s.views)} visitas</td>
+                      <td className="num">
+                        <button className="btn ghost small" onClick={() => add(`https://${s.host}${s.path}`, '')}>+ Seguir</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          )}
+        </>
+      )}
+    </>
+  );
+}
+
 /* ---------------------------- App ---------------------------- */
 
 export default function Dashboard() {
-  const [view, setView] = useState('vivo');
+  const [view, setView] = useState('mis');
   const [range, setRange] = useState('24h');
   const [pageKey, setPageKey] = useState('');
   const [device, setDevice] = useState('');
@@ -598,7 +907,7 @@ export default function Dashboard() {
   const [paused, setPaused] = useState(false);
 
   useEffect(() => {
-    setView(readPref('dwell_view', 'vivo'));
+    setView(readPref('dwell_view', 'mis'));
     setRange(readPref('dwell_range', '24h'));
     setPageKey(readPref('dwell_page', ''));
     setOrigin(window.location.origin);
@@ -726,7 +1035,8 @@ export default function Dashboard() {
         </header>
 
         {error && <p className="error">⚠ {error}</p>}
-        {data && landings.length === 0 && <Setup origin={origin} />}
+        {view === 'mis' && data && <ViewMis range={range} landings={landings} onAnalyze={pick} />}
+        {data && landings.length === 0 && view !== 'mis' && <Setup origin={origin} />}
 
         {data && landings.length > 0 && (
           <>

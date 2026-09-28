@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 const RANGES = { '1h': 1, '24h': 24, '7d': 24 * 7, '30d': 24 * 30 };
 const PAGE = 1000;
 const MAX_ROWS = 20_000;
-const COLUMNS = 'view_id,device,max_scroll,max_seen,depth_ms,sections,clicks,moves';
+const COLUMNS = 'view_id,device,max_scroll,max_seen,depth_ms,sections,clicks,moves,updated_at';
 const CORS = { 'Access-Control-Allow-Origin': '*' };
 
 export async function GET(request) {
@@ -36,7 +36,8 @@ export async function GET(request) {
     let q = db.from('dwell_views').select(COLUMNS).gte('started_at', since);
     q = q.eq('store', store);
     if (host) q = q.eq('host', host);
-    if (path) q = q.eq('path', path);
+    // Un producto tambien se abre dentro de colecciones: /collections/x/products/y
+    if (path) q = path.startsWith('/products/') ? q.like('path', `%${path}`) : q.eq('path', path);
     if (device === 'movil') q = q.eq('device', 'movil');
     if (device === 'escritorio') q = q.neq('device', 'movil');
     const { data, error } = await q.order('started_at', { ascending: false }).range(from, from + PAGE - 1);
@@ -45,7 +46,8 @@ export async function GET(request) {
     if (data.length < PAGE) break;
   }
 
-  const body = { range, device: device || 'todos', ...buildHeatmap(rows) };
+  const liveSince = new Date(Date.now() - 60_000).toISOString();
+  const body = { range, device: device || 'todos', ...buildHeatmap(rows, liveSince) };
   if (byCookie) body.overlayToken = await createOverlayToken();
   return Response.json(body, { headers: CORS });
 }
