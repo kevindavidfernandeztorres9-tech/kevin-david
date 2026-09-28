@@ -14,6 +14,10 @@
   --critical: #d03b3b;
   --critical-wash: rgba(208, 59, 59, 0.08);
   --live: #0ca30c;
+  --st-critical: #d03b3b;
+  --st-warning: #fab219;
+  --st-info: #2a78d6;
+  --st-good: #0ca30c;
 }
 @media (prefers-color-scheme: dark) {
   :root:where(:not([data-theme='light'])) {
@@ -97,3 +101,16 @@ tr.bottleneck td { background: var(--critical-wash); }
 .login h1 { font-size: 18px; margin: 0 0 6px; }
 .login input { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--page); }
 .login button { padding: 8px 10px; border: 0; border-radius: 8px; background: var(--series); color: #fff; cursor: pointer; }
+
+.insights { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.insight {
+  display: grid; grid-template-columns: 92px 1fr; gap: 12px; align-items: start;
+  padding: 10px 12px; border: 1px solid var(--border); border-left: 4px solid var(--st-info); border-radius: 8px;
+}
+.insight.critical { border-left-color: var(--st-critical); }
+.insight.warning { border-left-color: var(--st-warning); }
+.insight.good { border-left-color: var(--st-good); }
+.insight-tag { font-size: 12px; font-weight: 600; color: var(--ink-2); white-space: nowrap; padding-top: 2px; }
+.insight strong { display: block; font-size: 14px; }
+.insight p { margin: 2px 0 0; color: var(--ink-2); font-size: 13px; }
+@media (max-width: 560px) { .insight { grid-template-columns: 1fr; gap: 4px; } }

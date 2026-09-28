@@ -107,6 +107,32 @@ function SectionTable({ landing }) {
   );
 }
 
+const LEVELS = {
+  critical: { icon: '⛔', label: 'Crítico' },
+  warning: { icon: '⚠', label: 'Revisar' },
+  info: { icon: 'ℹ', label: 'Dato' },
+  good: { icon: '✓', label: 'Bien' },
+};
+
+function Insights({ items }) {
+  if (!items?.length) return null;
+  return (
+    <ul className="insights">
+      {items.map((it, i) => (
+        <li key={i} className={`insight ${it.level}`}>
+          <span className="insight-tag">
+            <span aria-hidden>{LEVELS[it.level].icon}</span> {LEVELS[it.level].label}
+          </span>
+          <div>
+            <strong>{it.title}</strong>
+            <p>{it.detail}</p>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function Setup({ origin }) {
   return (
     <div className="card setup">
@@ -264,6 +290,17 @@ export default function Dashboard() {
               ))}
             </tbody>
           </table>
+        </section>
+      )}
+
+      {current && (
+        <section className="card">
+          <h2>Diagnóstico de {current.path}</h2>
+          <p className="sub">
+            {current.host} · {fmtInt(current.views)} visitas
+            {current.devices ? ` (${fmtInt(current.devices.movil.views)} celular · ${fmtInt(current.devices.escritorio.views)} computadora)` : ''}
+          </p>
+          <Insights items={current.insights} />
         </section>
       )}
 
