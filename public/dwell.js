@@ -14,7 +14,21 @@
 
   var STORE = me.getAttribute('data-store') || location.hostname;
   var ENDPOINT = new URL('/api/collect', me.src).href;
+
+  // Modo "ver mapa de calor en la pagina real": no se registra la visita.
+  var overlayToken = new URLSearchParams(location.search).get('dwell_overlay');
+  if (overlayToken) {
+    var o = document.createElement('script');
+    o.src = new URL('/dwell-overlay.js', me.src).href;
+    o.setAttribute('data-token', overlayToken);
+    o.setAttribute('data-store', STORE);
+    (document.head || document.documentElement).appendChild(o);
+    return;
+  }
   var HEARTBEAT_MS = 15000;
+  var MAX_CLICKS = 150;
+  var MAX_MOVES = 400;
+  var MOVE_EVERY_MS = 400;
   var VISIBLE_RATIO = 0.4; // seccion "vista" si ocupa >= 40% de ella o de la pantalla
 
   function uuid() {
@@ -31,6 +45,7 @@
     if (!sessionId) { sessionId = uuid(); sessionStorage.setItem('dwell_sid', sessionId); }
   } catch (e) { sessionId = uuid(); }
 
+  var startedAt = Date.now();
   var params = new URLSearchParams(location.search);
   var view = {
     view_id: uuid(),
@@ -47,6 +62,12 @@
 
   var dwellMs = 0;
   var maxScroll = 0;
+  var maxSeen = 0;
+  var depthMs = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]; // ms con el centro de la pantalla en cada 10% de altura
+  var clicks = [];
+  var moves = [];
+  var lastMove = 0;
+  var lastMoveXY = [-1, -1];
   var addToCart = false;
   var checkout = false;
   var lastTick = Date.now();
@@ -61,6 +82,74 @@
     if (!active()) return;
     dwellMs += delta;
     for (var i = 0; i < sections.length; i++) if (sections[i].visible) sections[i].ms += delta;
+    var band = Math.floor(((window.scrollY || 0) + window.innerHeight / 2) / docHeight() * 10);
+    depthMs[Math.min(Math.max(band, 0), 9)] += delta;
+  }
+
+  function docHeight() {
+    return Math.max(document.documentElement.scrollHeight, document.body ? document.body.scrollHeight : 0, 1);
+  }
+
+  // Posicion en milesimas: x del ancho de la ventana, y del alto total de la pagina
+  function pagePoint(clientX, clientY) {
+    var x = Math.round((clientX / (window.innerWidth || 1)) * 1000);
+    var y = Math.round(((clientY + (window.scrollY || 0)) / docHeight()) * 1000);
+    return [Math.min(Math.max(x, 0), 1000), Math.min(Math.max(y, 0), 1000)];
+  }
+
+  function sectionIndexOf(el) {
+    for (var i = 0; i < sections.length; i++) if (sections[i].el.contains(el)) return i;
+    return -1;
+  }
+
+  // Describe a donde lleva el clic: ruta del enlace o texto del boton
+  function destinationOf(el) {
+    var a = el.closest ? el.closest('a[href]') : null;
+    if (a) {
+      try {
+        var u = new URL(a.getAttribute('href'), location.href);
+        if (u.hostname === location.hostname) return (u.pathname + u.hash).slice(0, 80);
+        return (u.hostname + u.pathname).slice(0, 80);
+      } catch (e) { return String(a.getAttribute('href')).slice(0, 80); }
+    }
+    var b = el.closest ? el.closest('button,[role=button],input[type=submit],summary,label,select') : null;
+    var target = b || el;
+    var text = (target.getAttribute('aria-label') || target.value || target.textContent || '').replace(/\s+/g, ' ').trim();
+    if (text) return text.slice(0, 60);
+    if (target.tagName === 'IMG') return 'imagen: ' + (target.getAttribute('alt') || 'sin texto').slice(0, 50);
+    return '<' + target.tagName.toLowerCase() + '>';
+  }
+
+  function kindOf(el, isBuy) {
+    if (isBuy) return 'buy';
+    if (el.closest && el.closest('a[href]')) return 'link';
+    if (el.closest && el.closest('button,[role=button],input,select,summary,label')) return 'button';
+    if (el.tagName === 'IMG' || (el.closest && el.closest('img,picture,video'))) return 'media';
+    return 'other';
+  }
+
+  function recordClick(e, isBuy) {
+    if (clicks.length >= MAX_CLICKS) return;
+    var el = e.target;
+    if (!el || el.nodeType !== 1) return;
+    var p = pagePoint(e.clientX, e.clientY);
+    clicks.push({
+      x: p[0], y: p[1],
+      t: Math.round((Date.now() - startedAt) / 1000),
+      s: sectionIndexOf(el),
+      k: kindOf(el, isBuy),
+      d: destinationOf(el)
+    });
+  }
+
+  function recordMove(e) {
+    var now = Date.now();
+    if (now - lastMove < MOVE_EVERY_MS || moves.length >= MAX_MOVES) return;
+    var p = pagePoint(e.clientX, e.clientY);
+    if (Math.abs(p[0] - lastMoveXY[0]) < 15 && Math.abs(p[1] - lastMoveXY[1]) < 5) return;
+    lastMove = now;
+    lastMoveXY = p;
+    moves.push(p);
   }
 
   function labelFor(el) {
@@ -123,6 +212,8 @@
     var height = Math.max(doc.scrollHeight - window.innerHeight, 1);
     var pct = Math.round(((window.scrollY || doc.scrollTop) / height) * 100);
     if (pct > maxScroll) maxScroll = Math.min(pct, 100);
+    var seen = Math.round((((window.scrollY || doc.scrollTop) + window.innerHeight) / docHeight()) * 100);
+    if (seen > maxSeen) maxSeen = Math.min(seen, 100);
   }
 
   function deepest() {
@@ -137,6 +228,10 @@
     for (var k in view) out[k] = view[k];
     out.dwell_ms = dwellMs;
     out.max_scroll = maxScroll;
+    out.max_seen = maxSeen;
+    out.depth_ms = depthMs;
+    out.clicks = clicks;
+    out.moves = moves;
     out.deepest_section = deepest();
     out.add_to_cart = addToCart;
     out.checkout = checkout;
@@ -173,12 +268,20 @@
 
   document.addEventListener('click', function (e) {
     var el = e.target && e.target.closest ? e.target.closest('a,button,input') : null;
-    if (!el) return;
-    var name = el.getAttribute('name') || '';
-    var href = el.getAttribute('href') || '';
-    if (name === 'add' || el.matches('[data-add-to-cart], .product-form__submit')) markCart();
-    if (name === 'checkout' || href.indexOf('/checkout') !== -1) markCheckout();
+    var isBuy = false;
+    if (el) {
+      var name = el.getAttribute('name') || '';
+      var href = el.getAttribute('href') || '';
+      var cart = name === 'add' || el.matches('[data-add-to-cart], .product-form__submit, add-to-cart-component button, [name="add"]');
+      var pay = name === 'checkout' || href.indexOf('/checkout') !== -1 || el.matches('.shopify-payment-button__button, [data-shopify="payment-button"] *');
+      isBuy = cart || pay;
+    }
+    recordClick(e, isBuy); // antes de markCart para que viaje en el mismo envio
+    if (isBuy && cart) markCart();
+    if (isBuy && pay) markCheckout();
   }, true);
+
+  document.addEventListener('mousemove', recordMove, { passive: true });
 
   // Carritos por AJAX (fetch a /cart/add.js)
   if (window.fetch) {

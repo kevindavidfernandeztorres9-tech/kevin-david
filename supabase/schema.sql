@@ -28,3 +28,9 @@ create index if not exists dwell_views_updated on public.dwell_views (updated_at
 -- Seguridad: RLS activado y SIN politicas. Nadie con la clave publica (anon)
 -- puede leer ni escribir; solo la app en Vercel con la clave service_role.
 alter table public.dwell_views enable row level security;
+
+-- v2: clics con destino, paso del cursor y dwell por altura de la pagina
+alter table public.dwell_views add column if not exists max_seen  smallint not null default 0;          -- % de la pagina que llego a ver
+alter table public.dwell_views add column if not exists depth_ms  jsonb    not null default '[]'::jsonb; -- ms en cada 10% de altura
+alter table public.dwell_views add column if not exists clicks    jsonb    not null default '[]'::jsonb; -- [{x,y,t,s,k,d}]
+alter table public.dwell_views add column if not exists moves     jsonb    not null default '[]'::jsonb; -- [[x,y], ...] en milesimas

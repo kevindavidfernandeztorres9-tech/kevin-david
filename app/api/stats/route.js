@@ -9,7 +9,7 @@ const RANGES = { '1h': 1, '24h': 24, '7d': 24 * 7, '30d': 24 * 30 };
 const PAGE = 1000;
 const MAX_ROWS = 50_000;
 const COLUMNS =
-  'session_id,store,host,path,device,dwell_ms,max_scroll,deepest_section,sections,add_to_cart,checkout,updated_at';
+  'view_id,session_id,store,host,path,device,referrer,utm_source,utm_campaign,dwell_ms,max_scroll,max_seen,depth_ms,deepest_section,sections,add_to_cart,checkout,started_at,updated_at';
 
 export async function GET(request) {
   const jar = await cookies();
