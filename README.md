@@ -19,6 +19,12 @@ laptop o celular.
 
 ## 2. Vercel (una vez)
 
+**Opción rápida:** pulsa este botón, entra con GitHub y rellena las variables:
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fkevindavidfernandeztorres9-tech%2Fkevin-david&env=SUPABASE_URL,SUPABASE_SERVICE_ROLE_KEY,DASHBOARD_PASSWORD&envDescription=Datos%20de%20Supabase%20y%20contrasena%20del%20panel&project-name=dwell-tiendas)
+
+**O a mano:**
+
 1. Entra a <https://vercel.com> con tu cuenta de GitHub.
 2. **Add New → Project** → importa este repositorio (`kevin-david`).
 3. En **Environment Variables** agrega:
@@ -60,6 +66,9 @@ contraseña y elige tienda y rango. El panel se actualiza solo cada 15 s.
 | Tiempo mediano | cuánto estuvo esa sección en pantalla |
 | Se fueron aquí | % de visitas cuya última sección fue esa |
 | ⚠ Cuello de botella | la sección (sin contar la última) donde más gente se va |
+
+En Windows puedes usar `Abrir_Dwell_en_Tiempo_Real.bat`: edítalo una vez con
+tu dirección de Vercel y ábrelo con doble clic.
 
 ## Desarrollo local
 
