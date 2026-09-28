@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase';
+import { STORE } from '@/lib/store';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -37,7 +38,8 @@ export async function POST(request) {
   }
 
   const host = str(body.host, 200);
-  if (!UUID.test(body.view_id || '') || !host || !allowedHost(host)) {
+  // Solo se aceptan datos de airmaggnature
+  if (!UUID.test(body.view_id || '') || !host || !allowedHost(host) || str(body.store, 80) !== STORE) {
     return new Response('rejected', { status: 400, headers: CORS });
   }
 
@@ -69,7 +71,7 @@ export async function POST(request) {
   const row = {
     view_id: body.view_id,
     session_id: UUID.test(body.session_id || '') ? body.session_id : null,
-    store: str(body.store, 80) || host,
+    store: STORE,
     host,
     path: str(body.path, 300) || '/',
     referrer: str(body.referrer, 200),

@@ -29,12 +29,11 @@ echo    1. Abrir el panel (navegador)
 echo    2. Abrir el panel como app (ventana propia)
 echo    3. Probar la tienda en incognito (genera una visita)
 echo    4. Comprobar que el script de seguimiento responde
-echo    5. Copiar la linea para Shopify de una tienda
+echo    5. Copiar la linea para Shopify (airmaggnature)
 echo    6. Abrir el editor de temas de Shopify
 echo    7. Ver los datos en Supabase
 echo    8. Abrir Vercel (deploys y variables)
 echo    9. Crear acceso directo en el Escritorio
-echo    J. Abrir el Dwell antiguo (Java), si esta en esta carpeta
 echo    0. Salir
 echo   -----------------------------------------------
 set "OP="
@@ -51,7 +50,6 @@ if "%OP%"=="6" goto shopify
 if "%OP%"=="7" goto supabase
 if "%OP%"=="8" goto vercel
 if "%OP%"=="9" goto acceso
-if /i "%OP%"=="J" goto java
 if "%OP%"=="0" goto fin
 echo.
 echo   Opcion no valida.
@@ -96,11 +94,8 @@ goto pausa
 
 :linea
 echo.
-set "NOMBRE="
-set /p "NOMBRE=   Nombre de la tienda para data-store [%TIENDA%]: "
-if "%NOMBRE%"=="" set "NOMBRE=%TIENDA%"
 set "TMPF=%TEMP%\dwell_linea.txt"
-> "%TMPF%" echo ^<script src="%DWELL_URL%/dwell.js" data-store="%NOMBRE%" defer^>^</script^>
+> "%TMPF%" echo ^<script src="%DWELL_URL%/dwell.js" data-store="%TIENDA%" defer^>^</script^>
 clip < "%TMPF%"
 echo.
 type "%TMPF%"
@@ -133,20 +128,6 @@ if errorlevel 1 (
     echo   Listo: "Dwell en Tiempo Real" esta en tu Escritorio.
 )
 goto pausa
-
-:java
-if not exist "build\dwell\Main.class" (
-    echo.
-    echo   No encontre el Dwell antiguo ^(carpeta build^) junto a este archivo.
-    goto pausa
-)
-rem Reutiliza el JRE embebido de ControlNegocio si esta al lado; si no, usa el del sistema.
-if exist "..\ControlNegocio\jre\bin\javaw.exe" (
-    start "" "..\ControlNegocio\jre\bin\javaw.exe" --enable-native-access=ALL-UNNAMED -cp "build;lib\flatlaf.jar" dwell.Main
-) else (
-    start "" javaw --enable-native-access=ALL-UNNAMED -cp "build;lib\flatlaf.jar" dwell.Main
-)
-goto fin
 
 :buscar_navegador
 set "CHROME="

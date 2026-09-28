@@ -137,7 +137,7 @@ function ViewVivo({ data, onPick }) {
               <tr key={l.key} className="clickable" onClick={() => onPick(l.key)}>
                 <td>
                   <div className="path">{l.path}</div>
-                  <div className="host">{l.host} · {l.store}</div>
+                  <div className="host">{l.host}</div>
                 </td>
                 <td className="num">{fmtInt(l.views)}</td>
                 <td className="num">{fmtInt(l.live)}</td>
@@ -188,7 +188,7 @@ function ViewVisitantes({ data, page }) {
               <tr key={v.id}>
                 <td>
                   <div className="path">{v.path}</div>
-                  <div className="host">{v.store}</div>
+                  <div className="host">{v.host}</div>
                 </td>
                 <td>{v.device === 'movil' ? 'Celular' : 'Computadora'}</td>
                 <td className="num">{fmtTime(v.dwellMs)}</td>
@@ -534,7 +534,7 @@ function ViewArreglar({ data, page, heat, onPick }) {
                 <tr key={l.key} className="clickable" onClick={() => onPick(l.key)}>
                   <td>
                     <div className="path">{l.path}</div>
-                    <div className="host">{l.store} · {fmtInt(l.views)} visitas</div>
+                    <div className="host">{fmtInt(l.views)} visitas</div>
                   </td>
                   <td>
                     <span className={top.level === 'critical' ? 'badge' : 'tag-warn'}>
@@ -576,11 +576,10 @@ function Setup({ origin }) {
     <div className="card setup">
       <h2>Aún no hay datos en este rango</h2>
       <p className="sub">
-        Pega esta línea en cada tienda (Shopify → Tienda online → Temas → Editar código → theme.liquid, justo antes de
+        Pega esta línea en airmaggnature (Shopify → Tienda online → Temas → Editar código → theme.liquid, justo antes de
         &lt;/head&gt;):
       </p>
       <pre>{`<script src="${origin}/dwell.js" data-store="airmaggnature" defer></script>`}</pre>
-      <p className="sub">Cambia <code>data-store</code> por el nombre de cada tienda.</p>
     </div>
   );
 }
@@ -590,7 +589,6 @@ function Setup({ origin }) {
 export default function Dashboard() {
   const [view, setView] = useState('vivo');
   const [range, setRange] = useState('24h');
-  const [store, setStore] = useState('');
   const [pageKey, setPageKey] = useState('');
   const [device, setDevice] = useState('');
   const [data, setData] = useState(null);
@@ -602,14 +600,13 @@ export default function Dashboard() {
   useEffect(() => {
     setView(readPref('dwell_view', 'vivo'));
     setRange(readPref('dwell_range', '24h'));
-    setStore(readPref('dwell_store', ''));
     setPageKey(readPref('dwell_page', ''));
     setOrigin(window.location.origin);
   }, []);
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch(`/api/stats?range=${range}&store=${encodeURIComponent(store)}`, { cache: 'no-store' });
+      const res = await fetch(`/api/stats?range=${range}`, { cache: 'no-store' });
       if (res.status === 401) {
         window.location.href = '/login';
         return;
@@ -621,14 +618,14 @@ export default function Dashboard() {
     } catch (e) {
       setError(e.message);
     }
-  }, [range, store]);
+  }, [range]);
 
   const landings = data?.landings ?? [];
   const page = landings.find((l) => l.key === pageKey) || null;
   const needsHeat = view === 'calor' || view === 'clics' || view === 'arreglar';
 
   const loadHeat = useCallback(async () => {
-    const q = new URLSearchParams({ range, store, device });
+    const q = new URLSearchParams({ range, device });
     if (page) {
       q.set('host', page.host);
       q.set('path', page.path);
@@ -638,7 +635,7 @@ export default function Dashboard() {
       const json = await res.json();
       if (res.ok) setHeat(json);
     } catch {}
-  }, [range, store, device, page?.host, page?.path]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [range, device, page?.host, page?.path]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     load();
@@ -674,7 +671,7 @@ export default function Dashboard() {
       <aside className="side">
         <div className="brand">
           <strong>Dwell</strong>
-          <span>en tiempo real</span>
+          <span>airmaggnature</span>
         </div>
         <nav>
           {VIEWS.map((v, i) =>
@@ -700,21 +697,6 @@ export default function Dashboard() {
             {data ? ` · actualizado ${new Date(data.updatedAt).toLocaleTimeString('es-PE')}` : ''}
           </div>
           <div className="filters">
-            <select
-              aria-label="Tienda"
-              value={store}
-              onChange={(e) => {
-                setStore(e.target.value);
-                setPageKey('');
-                writePref('dwell_store', e.target.value);
-                writePref('dwell_page', '');
-              }}
-            >
-              <option value="">Todas las tiendas</option>
-              {(data?.stores ?? []).map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
             <select
               aria-label="Página"
               value={page ? pageKey : ''}

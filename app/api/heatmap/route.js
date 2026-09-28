@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase';
 import { AUTH_COOKIE, createOverlayToken, isAuthorized, isValidOverlayToken } from '@/lib/auth';
 import { buildHeatmap } from '@/lib/heatmap';
+import { STORE } from '@/lib/store';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +23,7 @@ export async function GET(request) {
   }
 
   const range = RANGES[params.get('range')] ? params.get('range') : '7d';
-  const store = params.get('store') || '';
+  const store = STORE;
   const host = params.get('host') || '';
   const path = params.get('path') || '';
   const device = params.get('device') || '';
@@ -33,7 +34,7 @@ export async function GET(request) {
   const rows = [];
   for (let from = 0; from < MAX_ROWS; from += PAGE) {
     let q = db.from('dwell_views').select(COLUMNS).gte('started_at', since);
-    if (store) q = q.eq('store', store);
+    q = q.eq('store', store);
     if (host) q = q.eq('host', host);
     if (path) q = q.eq('path', path);
     if (device === 'movil') q = q.eq('device', 'movil');

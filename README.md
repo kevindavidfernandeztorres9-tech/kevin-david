@@ -7,7 +7,7 @@ laptop o celular.
 
 - **Supabase** guarda las visitas.
 - **Vercel** publica el panel y el script de seguimiento.
-- **Shopify** carga una línea de código en cada tienda.
+- **Shopify** carga una línea de código en la tienda **airmaggnature** (la app es solo para esa tienda).
 
 ## 1. Supabase (una vez)
 
@@ -38,7 +38,7 @@ laptop o celular.
 
 4. Pulsa **Deploy**. Te dará una dirección como `https://dwell-xxx.vercel.app`.
 
-## 3. Shopify (en cada tienda)
+## 3. Shopify (airmaggnature)
 
 **Tienda online → Temas → ⋯ → Editar código → `layout/theme.liquid`** y pega
 justo antes de `</head>`:
@@ -48,8 +48,7 @@ justo antes de `</head>`:
 ```
 
 - Cambia `dwell-xxx.vercel.app` por tu dirección de Vercel.
-- Cambia `data-store` por el nombre de cada tienda (`airmaggnature`, `mi-otra-tienda`…).
-  Así las separas en el selector del panel.
+- No cambies `data-store`: la app solo acepta datos de `airmaggnature`.
 - Las secciones del tema se detectan solas. Para medir un bloque concreto con
   un nombre propio, agrégale `data-dwell="Nombre"`.
 
