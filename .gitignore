@@ -5,3 +5,4 @@ node_modules/
 .vercel/
 desktop/build/
 desktop/dist/
+__pycache__/
