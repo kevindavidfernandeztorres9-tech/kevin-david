@@ -1,0 +1,70 @@
+# Dwell en tiempo real
+
+Mide cuánto tiempo pasan tus visitantes en cada sección de tus landing pages
+(Shopify u otra web) y te marca el **cuello de botella**: la sección donde más
+gente se va. Funciona con varias tiendas a la vez y se abre desde cualquier
+laptop o celular.
+
+- **Supabase** guarda las visitas.
+- **Vercel** publica el panel y el script de seguimiento.
+- **Shopify** carga una línea de código en cada tienda.
+
+## 1. Supabase (una vez)
+
+1. Entra a tu proyecto → **SQL Editor** → **New query**.
+2. Pega el contenido de [`supabase/schema.sql`](supabase/schema.sql) y pulsa **Run**.
+3. Ve a **Project Settings → API** y copia:
+   - **Project URL** → `SUPABASE_URL`
+   - **service_role** (secret) → `SUPABASE_SERVICE_ROLE_KEY`
+
+## 2. Vercel (una vez)
+
+1. Entra a <https://vercel.com> con tu cuenta de GitHub.
+2. **Add New → Project** → importa este repositorio (`kevin-david`).
+3. En **Environment Variables** agrega:
+
+   | Nombre | Valor |
+   |---|---|
+   | `SUPABASE_URL` | la Project URL de Supabase |
+   | `SUPABASE_SERVICE_ROLE_KEY` | la clave service_role |
+   | `DASHBOARD_PASSWORD` | la contraseña que quieras para el panel |
+   | `ALLOWED_HOSTS` | *(opcional)* dominios de tus tiendas separados por coma, p. ej. `airmaggnature.myshopify.com,www.tudominio.com` |
+
+4. Pulsa **Deploy**. Te dará una dirección como `https://dwell-xxx.vercel.app`.
+
+## 3. Shopify (en cada tienda)
+
+**Tienda online → Temas → ⋯ → Editar código → `layout/theme.liquid`** y pega
+justo antes de `</head>`:
+
+```html
+<script src="https://dwell-xxx.vercel.app/dwell.js" data-store="airmaggnature" defer></script>
+```
+
+- Cambia `dwell-xxx.vercel.app` por tu dirección de Vercel.
+- Cambia `data-store` por el nombre de cada tienda (`airmaggnature`, `mi-otra-tienda`…).
+  Así las separas en el selector del panel.
+- Las secciones del tema se detectan solas. Para medir un bloque concreto con
+  un nombre propio, agrégale `data-dwell="Nombre"`.
+
+## 4. Usarlo
+
+Abre `https://dwell-xxx.vercel.app` desde cualquier laptop, entra con tu
+contraseña y elige tienda y rango. El panel se actualiza solo cada 15 s.
+
+| Métrica | Qué significa |
+|---|---|
+| Dwell mediano | tiempo activo (pestaña visible) en la página |
+| Rebote | visitas de menos de 10 s |
+| La vieron | % de visitas que llegaron a esa sección |
+| Tiempo mediano | cuánto estuvo esa sección en pantalla |
+| Se fueron aquí | % de visitas cuya última sección fue esa |
+| ⚠ Cuello de botella | la sección (sin contar la última) donde más gente se va |
+
+## Desarrollo local
+
+```bash
+cp .env.example .env.local   # rellena los valores
+npm install
+npm run dev
+```
