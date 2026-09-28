@@ -1,0 +1,11 @@
+DWELL AIRMAGGNATURE - APP DE ESCRITORIO
+
+1. Descomprime esta carpeta donde quieras (por ejemplo en Documentos).
+2. Doble clic en "Abrir_Dwell_Airmagg.bat".
+   - La primera vez crea el icono "Dwell Airmagg" en tu Escritorio.
+   - Te pide la contrasena de tu panel (la misma de dwell-tiendas1.vercel.app).
+3. Necesita Java 17 o mas nuevo. Si no lo tienes, el .bat abre la pagina para instalarlo.
+   Tambien usa el Java de ControlNegocio si esta carpeta esta al lado de ControlNegocio.
+
+Si cambias la contrasena del panel: boton "Configurar" (abajo).
+Tus preferencias se guardan en %APPDATA%\DwellAirmagg\config.properties

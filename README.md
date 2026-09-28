@@ -69,6 +69,14 @@ contraseña y elige tienda y rango. El panel se actualiza solo cada 15 s.
 En Windows puedes usar `Abrir_Dwell_en_Tiempo_Real.bat`: edítalo una vez con
 tu dirección de Vercel y ábrelo con doble clic.
 
+## App de escritorio (Windows)
+
+`descargas/DwellAirmagg.zip` trae la app en Java (misma información que el panel web,
+con tema oscuro y "Mis landings" en vivo). Descomprímela y abre
+`Abrir_Dwell_Airmagg.bat`; te pide la contraseña del panel. Necesita Java 17+.
+
+Para recompilarla: `desktop/build.sh` (genera `desktop/dist/DwellAirmagg.zip`).
+
 ## Desarrollo local
 
 ```bash
