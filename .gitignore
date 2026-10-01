@@ -1,7 +1,9 @@
-node_modules/
-.next/
-.env
-.env*.local
-.vercel/
-desktop/build/
-desktop/dist/
+build/
+*.class
+*.log
+hs_err_pid*.log
+
+# Apunta a la carpeta de datos de ESTA maquina. No son credenciales, pero la ruta
+# cambia en cada equipo y versionarla haria que la app abriera el negocio
+# equivocado en otra laptop. Ver datos/config.ejemplo.txt.
+datos/config.txt
